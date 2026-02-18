@@ -87,7 +87,7 @@ let player,enemies,bullets,enemyBullets,camera;
 let lastEnemyX=600;
 
 const ENEMY_GAP = 500;
-const ENEMY_RANGE = 1050; // 🔥 3× range
+const ENEMY_RANGE = 1050;
 
 document.addEventListener("keydown",e=>keys[e.code]=true);
 document.addEventListener("keyup",e=>keys[e.code]=false);
@@ -122,14 +122,14 @@ function collide(a,b){
     return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;
 }
 
-/* 🧍 FAT STICKMAN + BIG FACE */
+/* 🧍 FAT STICKMAN + CIRCULAR FACE */
 function drawPlayer(p){
     let x=p.x-camera,y=p.y;
     p.frame+=(keys.KeyA||keys.KeyD)?0.18:0;
     let leg=Math.sin(p.frame)*12;
 
     ctx.strokeStyle="white";
-    ctx.lineWidth=6; // 🔥 thicker body
+    ctx.lineWidth=6;
 
     // body
     ctx.beginPath();
@@ -137,7 +137,7 @@ function drawPlayer(p){
     ctx.lineTo(x+25,y+68);
     ctx.stroke();
 
-    // legs (wider)
+    // legs
     ctx.beginPath();
     ctx.moveTo(x+25,y+68);
     ctx.lineTo(x+5+leg,y+95);
@@ -145,28 +145,37 @@ function drawPlayer(p){
     ctx.lineTo(x+45-leg,y+95);
     ctx.stroke();
 
-    // arm + gun (fatter)
+    // arm + gun
     ctx.beginPath();
     ctx.moveTo(x+25,y+42);
     ctx.lineTo(x+52,y+48);
     ctx.stroke();
-
     ctx.fillStyle="gray";
     ctx.fillRect(x+52,y+45,26,8);
 
-    // head (bigger)
+    // head outline
     ctx.beginPath();
     ctx.arc(x+25,y+18,18,0,Math.PI*2);
     ctx.stroke();
 
-    // BIG FACE
+    /* 😀 CIRCULAR FACE (20% BIGGER) */
+    const faceSize = 50;          // +20%
+    const faceX = x + 25;
+    const faceY = y + 15;
+    const r = faceSize / 2;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(faceX, faceY, r, 0, Math.PI*2);
+    ctx.clip();
     ctx.drawImage(
         playerFace,
-        x+7,
-        y-2,
-        36,
-        36
+        faceX - r,
+        faceY - r,
+        faceSize,
+        faceSize
     );
+    ctx.restore();
 }
 
 function loop(){
@@ -200,8 +209,7 @@ function loop(){
     bullets.forEach(b=>b.x+=14);
 
     enemies.forEach(e=>{
-        let d=Math.abs(player.x-e.x);
-        if(d<ENEMY_RANGE){
+        if(Math.abs(player.x-e.x)<ENEMY_RANGE){
             e.x+=player.x<e.x?-1.8:1.8;
             e.t++;
             if(e.t>80){
