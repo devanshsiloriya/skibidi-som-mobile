@@ -3,23 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <title>SKIBIDI SOM</title>
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
 <style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    touch-action:none;
-}
-body{
-    background:#000;
-    overflow:hidden;
-    font-family:Arial;
-}
+*{margin:0;padding:0;box-sizing:border-box;touch-action:none;}
+body{background:black;overflow:hidden;font-family:Arial;}
 
-/* GAME ROTATION */
 #gameContainer{
     position:fixed;
     width:100vh;
@@ -28,71 +17,28 @@ body{
     left:50%;
     transform:translate(-50%,-50%) rotate(90deg);
 }
+canvas{width:100%;height:100%;background:#222;}
 
-/* CANVAS */
-canvas{
-    width:100%;
-    height:100%;
-    background:#222;
-}
-
-/* MENUS */
 .menu{
-    position:absolute;
-    inset:0;
-    background:rgba(0,0,0,0.85);
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    color:white;
-    z-index:10;
+    position:absolute;inset:0;
+    background:rgba(0,0,0,.85);
+    display:flex;flex-direction:column;
+    justify-content:center;align-items:center;
+    color:white;z-index:10;
 }
 .hidden{display:none;}
-button{
-    padding:12px 30px;
-    margin:10px;
-    font-size:18px;
-}
+button{padding:12px 30px;margin:10px;font-size:18px;}
 
-/* CONTROLS */
-.controls{
-    position:fixed;
-    inset:0;
-    pointer-events:none;
-    z-index:20;
-}
+.controls{position:fixed;inset:0;pointer-events:none;z-index:20;}
 .btn{
-    width:70px;
-    height:70px;
-    border-radius:50%;
-    background:rgba(255,255,255,0.2);
-    color:white;
-    font-size:18px;
-    display:flex;
-    justify-content:center;
-    align-items:center;
+    width:70px;height:70px;border-radius:50%;
+    background:rgba(255,255,255,.2);
+    color:white;font-size:14px;
+    display:flex;justify-content:center;align-items:center;
     pointer-events:auto;
 }
-
-/* TOP LEFT */
-.top-left{
-    position:absolute;
-    top:20px;
-    left:20px;
-    display:flex;
-    flex-direction:column;
-    gap:15px;
-}
-
-/* BOTTOM LEFT */
-.bottom-left{
-    position:absolute;
-    bottom:20px;
-    left:20px;
-    display:flex;
-    gap:15px;
-}
+.top-left{position:absolute;top:20px;left:20px;display:flex;flex-direction:column;gap:15px;}
+.bottom-left{position:absolute;bottom:20px;left:20px;display:flex;gap:15px;}
 </style>
 </head>
 
@@ -107,20 +53,14 @@ button{
     <button onclick="startGame()">Start Game</button>
 </div>
 
-<div id="pause" class="menu hidden">
-    <h2>Paused</h2>
-    <button onclick="resume()">Resume</button>
-</div>
-
 <div id="over" class="menu hidden">
     <h2>Game Over</h2>
-    <button onclick="restart()">Play Again</button>
+    <button onclick="location.reload()">Play Again</button>
 </div>
 
 <canvas id="game" width="900" height="500"></canvas>
 </div>
 
-<!-- CONTROLS -->
 <div class="controls">
     <div class="top-left">
         <div class="btn" id="back">⬆ BACK</div>
@@ -133,48 +73,41 @@ button{
 </div>
 
 <script>
-/* SETUP */
-const canvas=document.getElementById("game");
-const ctx=canvas.getContext("2d");
-const music=document.getElementById("bgm");
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const music = document.getElementById("bgm");
 
-const playerImg=new Image(); playerImg.src="player.png";
-const enemyImg=new Image(); enemyImg.src="enemy.png";
-const groundImg=new Image(); groundImg.src="ground.png";
-const enemyBulletImg=new Image(); enemyBulletImg.src="st.png";
+const enemyImg = new Image(); enemyImg.src="enemy.png";
+const groundImg = new Image(); groundImg.src="ground.png";
+const enemyBulletImg = new Image(); enemyBulletImg.src="st.png";
+const playerFace = new Image(); playerFace.src="player.png";
 
-let keys={},state="menu";
-let player,enemies,bullets,enemyBullets,camera,spawnTimer;
+let keys={}, state="menu";
+let player,enemies,bullets,enemyBullets,camera;
+let lastEnemyX=600;
 
-/* KEYBOARD */
+const ENEMY_GAP = 500;
+const ENEMY_RANGE = 1050; // 🔥 3× range
+
 document.addEventListener("keydown",e=>keys[e.code]=true);
 document.addEventListener("keyup",e=>keys[e.code]=false);
 
-/* TOUCH MAP */
 function touch(id,key){
-    const b=document.getElementById(id);
-    b.addEventListener("touchstart",e=>{
-        e.preventDefault();
-        keys[key]=true;
-    });
-    b.addEventListener("touchend",e=>{
-        e.preventDefault();
-        keys[key]=false;
-    });
+    let b=document.getElementById(id);
+    b.addEventListener("touchstart",e=>{e.preventDefault();keys[key]=true;});
+    b.addEventListener("touchend",e=>{e.preventDefault();keys[key]=false;});
 }
 touch("back","KeyA");
 touch("front","KeyD");
 touch("jump","KeyW");
 touch("shoot","Space");
 
-/* GAME */
 function init(){
-    player={x:100,y:300,w:40,h:80,vy:0,hp:100,cd:0};
+    player={x:100,y:300,w:50,h:90,vy:0,hp:100,cd:0,onGround:false,frame:0};
     enemies=[];
     bullets=[];
     enemyBullets=[];
     camera=0;
-    spawnTimer=0;
 }
 
 function startGame(){
@@ -184,115 +117,131 @@ function startGame(){
     state="play";
     loop();
 }
-function resume(){
-    document.getElementById("pause").classList.add("hidden");
-    music.play();
-    state="play";
-    loop();
-}
-function restart(){location.reload();}
-function gameOver(){
-    state="over";
-    music.pause();
-    document.getElementById("over").classList.remove("hidden");
-}
 
 function collide(a,b){
     return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;
 }
 
-/* LOOP */
+/* 🧍 FAT STICKMAN + BIG FACE */
+function drawPlayer(p){
+    let x=p.x-camera,y=p.y;
+    p.frame+=(keys.KeyA||keys.KeyD)?0.18:0;
+    let leg=Math.sin(p.frame)*12;
+
+    ctx.strokeStyle="white";
+    ctx.lineWidth=6; // 🔥 thicker body
+
+    // body
+    ctx.beginPath();
+    ctx.moveTo(x+25,y+32);
+    ctx.lineTo(x+25,y+68);
+    ctx.stroke();
+
+    // legs (wider)
+    ctx.beginPath();
+    ctx.moveTo(x+25,y+68);
+    ctx.lineTo(x+5+leg,y+95);
+    ctx.moveTo(x+25,y+68);
+    ctx.lineTo(x+45-leg,y+95);
+    ctx.stroke();
+
+    // arm + gun (fatter)
+    ctx.beginPath();
+    ctx.moveTo(x+25,y+42);
+    ctx.lineTo(x+52,y+48);
+    ctx.stroke();
+
+    ctx.fillStyle="gray";
+    ctx.fillRect(x+52,y+45,26,8);
+
+    // head (bigger)
+    ctx.beginPath();
+    ctx.arc(x+25,y+18,18,0,Math.PI*2);
+    ctx.stroke();
+
+    // BIG FACE
+    ctx.drawImage(
+        playerFace,
+        x+7,
+        y-2,
+        36,
+        36
+    );
+}
+
 function loop(){
-    if(state!=="play") return;
+    if(state!=="play")return;
     ctx.clearRect(0,0,900,500);
 
-    /* PLAYER MOVE */
-    if(keys.KeyA) player.x-=6;
-    if(keys.KeyD) player.x+=6;
-    if(keys.KeyW && player.y+player.h>=420) player.vy=-17;
+    if(keys.KeyA)player.x-=6;
+    if(keys.KeyD)player.x+=6;
+    if(keys.KeyW && player.onGround){player.vy=-17;player.onGround=false;}
 
     player.vy+=0.9;
     player.y+=player.vy;
     if(player.y+player.h>=420){
         player.y=420-player.h;
         player.vy=0;
+        player.onGround=true;
     }
 
     camera=Math.max(0,player.x-250);
 
-    /* PLAYER SHOOT */
+    if(player.x>lastEnemyX){
+        enemies.push({x:lastEnemyX+ENEMY_GAP,y:300,w:85,h:120,hp:5,t:0});
+        lastEnemyX+=ENEMY_GAP;
+    }
+
     if(keys.Space && player.cd<=0){
-        bullets.push({x:player.x+70,y:player.y+40,w:18,h:8});
+        bullets.push({x:player.x+75,y:player.y+48,w:18,h:8});
         player.cd=10;
     }
-    if(player.cd>0) player.cd--;
+    if(player.cd>0)player.cd--;
     bullets.forEach(b=>b.x+=14);
 
-    /* ENEMY SPAWN */
-    spawnTimer++;
-    if(spawnTimer>120){
-        spawnTimer=0;
-        enemies.push({x:camera+900,y:300,w:85,h:120,hp:5,t:0});
-    }
-
-    /* ENEMY SHOOT */
     enemies.forEach(e=>{
-        e.t++;
-        if(e.t>90){
-            e.t=0;
-            enemyBullets.push({x:e.x,y:e.y+50,w:30,h:20});
+        let d=Math.abs(player.x-e.x);
+        if(d<ENEMY_RANGE){
+            e.x+=player.x<e.x?-1.8:1.8;
+            e.t++;
+            if(e.t>80){
+                e.t=0;
+                enemyBullets.push({x:e.x,y:e.y+50,w:30,h:20});
+            }
         }
     });
 
     enemyBullets.forEach(b=>b.x-=9);
 
-    /* COLLISIONS */
-    bullets.forEach(b=>{
-        enemies.forEach(e=>{
-            if(collide(b,e)){
-                e.hp--;
-                b.x=9999;
-            }
-        });
-    });
+    bullets.forEach(b=>enemies.forEach(e=>{
+        if(collide(b,e)){e.hp--;b.x=9999;}
+    }));
     enemies=enemies.filter(e=>e.hp>0);
 
     enemyBullets.forEach(b=>{
-        if(collide(b,player)){
-            player.hp-=10;
-            b.x=-999;
-        }
+        if(collide(b,player)){player.hp-=10;b.x=-999;}
     });
 
     if(player.hp<=0){
-        gameOver();
+        state="over";
+        music.pause();
+        document.getElementById("over").classList.remove("hidden");
         return;
     }
 
-    /* DRAW GROUND */
     for(let x=Math.floor(camera/200)*200;x<camera+900;x+=200)
         ctx.drawImage(groundImg,x-camera,420,200,80);
 
-    /* DRAW */
-    ctx.drawImage(playerImg,player.x-camera,player.y,60,80);
+    drawPlayer(player);
     enemies.forEach(e=>ctx.drawImage(enemyImg,e.x-camera,e.y,85,120));
-    bullets.forEach(b=>{
-        ctx.fillStyle="yellow";
-        ctx.fillRect(b.x-camera,b.y,b.w,b.h);
-    });
-    enemyBullets.forEach(b=>{
-        ctx.drawImage(enemyBulletImg,b.x-camera,b.y,30,20);
-    });
+    bullets.forEach(b=>{ctx.fillStyle="yellow";ctx.fillRect(b.x-camera,b.y,b.w,b.h);});
+    enemyBullets.forEach(b=>ctx.drawImage(enemyBulletImg,b.x-camera,b.y,30,20));
 
-    /* HEALTH BAR */
-    ctx.fillStyle="red";
-    ctx.fillRect(20,20,200,20);
-    ctx.fillStyle="lime";
-    ctx.fillRect(20,20,player.hp*2,20);
+    ctx.fillStyle="red";ctx.fillRect(20,20,200,20);
+    ctx.fillStyle="lime";ctx.fillRect(20,20,player.hp*2,20);
 
     requestAnimationFrame(loop);
 }
 </script>
-
 </body>
 </html>
